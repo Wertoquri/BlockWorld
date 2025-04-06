@@ -9,7 +9,7 @@ public class Controller : MonoBehaviour
         mouseY = 0f,
         currentAngle = 0f;
     private CharacterController controller;
-    [SerializeField] Camera camera;
+    [SerializeField] new Camera camera;
     [SerializeField] float mouseSpeed = 50f;
 
     [SerializeField] GameObject particleObject, tool;
@@ -29,6 +29,9 @@ public class Controller : MonoBehaviour
     [SerializeField] GameObject[] equipabletItems;
     GameObject currentEquipedItem;
 
+    [SerializeField] float reloadTime = 1f;
+    private float lastTimeShot = 0f;
+
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
@@ -44,7 +47,7 @@ public class Controller : MonoBehaviour
 
     void Start()
     {
-        EquipItem("Sword");
+        EquipItem("Pistol");
 
     }
 
@@ -56,14 +59,14 @@ public class Controller : MonoBehaviour
             MoveCharacter();
 
             if (Physics.Raycast(camera.transform.position, camera.transform.forward
-                , out hit, 5f))
+                , out hit))
             {
                 if (Input.GetMouseButton(0))
                 {
                     ObjectInteraction(hit.transform.gameObject);
                 }
             }
-            
+
         }
     }
 
@@ -78,9 +81,22 @@ public class Controller : MonoBehaviour
         {
             CloseInventoryPanels();
         }
-        else if(Input.GetMouseButtonDown(1) && itemYouCanEquipName != EQUIPE_NOT_SELECTED_TEXT && inventoryManager.inventoryPanel.activeSelf)
+        else if (Input.GetMouseButtonDown(1) && itemYouCanEquipName != EQUIPE_NOT_SELECTED_TEXT && inventoryManager.inventoryPanel.activeSelf)
+        {
+            EquipItem(itemYouCanEquipName);
+        }
+
+        if (canMove)
+        {
+            if (Physics.Raycast(camera.transform.position, camera.transform.forward
+                , out hit, 5f))
             {
-                EquipItem(itemYouCanEquipName);
+                if (Input.GetMouseButtonDown(1))
+                {
+                    ItemAbility();
+                }
+            }
+
         }
     }
 
@@ -117,7 +133,7 @@ public class Controller : MonoBehaviour
             tool.GetComponent<Animator>().SetTrigger("attack");
             hitLastTime = Time.time;
             Tool currentToolInfo;
-            if(tool.TryGetComponent<Tool>(out currentToolInfo))
+            if (tool.TryGetComponent<Tool>(out currentToolInfo))
             {
                 block.health -= currentToolInfo.damageToBlocks;
             }
@@ -139,9 +155,9 @@ public class Controller : MonoBehaviour
 
     private void EquipItem(string toolName)
     {
-        foreach(GameObject Tool in equipabletItems)
+        foreach (GameObject Tool in equipabletItems)
         {
-            if(toolName == Tool.name)
+            if (toolName == Tool.name)
             {
                 Tool.SetActive(true);
                 tool = Tool;
@@ -159,13 +175,26 @@ public class Controller : MonoBehaviour
         switch (tempObject.tag)
         {
             case "Block":
-                Dig(tempObject.GetComponent<Block>());
+                if (Vector3.Distance(transform.position, tempObject.transform.position) < 5f)
+                    Dig(tempObject.GetComponent<Block>());
                 break;
             case "Enemy":
                 break;
+            case "Bedrock":
+                if (Time.time - hitLastTime > 1 / hitScaleSpeed)
+                {
+                    tool.GetComponent<Animator>().SetTrigger("attack");
+                }
+                break;
             case "Chest":
-                currentChestItems = tempObject.GetComponent<Chest>().chestItems;
-                OpenChest();
+                if (Vector3.Distance(transform.position, tempObject.transform.position) < 5f)
+                {
+                    currentChestItems = tempObject.GetComponent<Chest>().chestItems;
+                    OpenChest();
+                }
+                break;
+            case "Target":
+                Damage(tempObject.gameObject);
                 break;
         }
     }
@@ -175,7 +204,7 @@ public class Controller : MonoBehaviour
         Cursor.visible = true;
         Cursor.lockState = CursorLockMode.Confined;
         inventoryManager.inventoryPanel.SetActive(true);
-        
+
         if (inventoryItem.Count > 0)
         {
             for (int i = 0; i < inventoryItem.Count; i++)
@@ -187,7 +216,7 @@ public class Controller : MonoBehaviour
         }
         canMove = false;
     }
-    
+
     private void OpenChest()
     {
         Cursor.visible = true;
@@ -216,7 +245,7 @@ public class Controller : MonoBehaviour
         }
         inventoryManager.inventorySlots.Clear();
         inventoryManager.inventoryPanel.SetActive(false);
-        
+
         foreach (GameObject slot in inventoryManager.chestSlots)
         {
             Destroy(slot);
@@ -235,4 +264,84 @@ public class Controller : MonoBehaviour
             Destroy(other.gameObject);
         }
     }
+
+    private void ItemAbility()
+    {
+        switch (tool.name)
+        {
+            case "Ground":
+                CreateBlock();
+                break;
+            case "Meat":
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void CreateBlock()
+    {
+        GameObject ground = Resources.Load<GameObject>("Ground");
+        Vector3 tempPos = hit.transform.gameObject.transform.position;
+        Vector3 newBlockPoz = Vector3.zero;
+        if (hit.transform.gameObject.tag == "Block")
+        {
+            GameObject currentBlock = Instantiate(ground);
+            if (hit.point.y == tempPos.y + 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x, tempPos.y + 1f, tempPos.z);
+            }
+            else if (hit.point.y == tempPos.y - 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x, tempPos.y - 1f, tempPos.z);
+            }
+            else if (hit.point.z == tempPos.z + 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x, tempPos.y, tempPos.z + 1f);
+            }
+            else if (hit.point.z == tempPos.z - 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x, tempPos.y, tempPos.z - 1f);
+            }
+            else if (hit.point.x == tempPos.x + 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x + 1f, tempPos.y, tempPos.z);
+            }
+            else if (hit.point.x == tempPos.x - 0.5f)
+            {
+                newBlockPoz = new Vector3(tempPos.x - 1f, tempPos.y, tempPos.z);
+            }
+            currentBlock.transform.position = newBlockPoz;
+            ModifyItemCount("Ground");
+        }
+    }
+
+    private void ModifyItemCount(string itemName)
+    {
+        foreach (ItemData item in inventoryItem)
+        {
+            if (item.name == itemName)
+            {
+                item.count--;
+                if (item.count <= 0)
+                {
+                    inventoryItem.Remove(item);
+                    EquipItem(inventoryItem[0].name);
+                }
+                break;
+            }
+        }
+    }
+
+    private void Damage(GameObject tempObj)
+    {
+        Debug.Log("Shot");
+        if (Time.time - lastTimeShot > reloadTime)
+        {
+            lastTimeShot = Time.time;
+            EnemySetting settings = tempObj.GetComponent<EnemySetting>();
+            settings.TakeDamage(tool.GetComponent<Tool>().damageToEnemy);
+        }
+    }
+
 }

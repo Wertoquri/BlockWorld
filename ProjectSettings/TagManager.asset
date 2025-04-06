@@ -8,6 +8,8 @@ TagManager:
   - Grass
   - Block
   - Chest
+  - Target
+  - Bedrock
   layers:
   - Default
   - TransparentFX

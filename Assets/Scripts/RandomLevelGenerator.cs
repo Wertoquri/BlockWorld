@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class RandomLevelGenerator : MonoBehaviour
 {
-    [SerializeField] GameObject groundPref, grassPref, chestPref;
+    [SerializeField] GameObject groundPref, grassPref, chestPref, bedrockPref;
     private int baseHight = 2,
         maxBlockCountY = 10,
         chunkSize = 16,
@@ -40,12 +40,17 @@ public class RandomLevelGenerator : MonoBehaviour
                         temp = Instantiate(grassPref, new Vector3(x, y, z), Quaternion.identity);
                         CreateChest(x, height, z);
                     }
+                    else if(y == 0)
+                    {
+                        temp = Instantiate(bedrockPref, new Vector3(x, y, z), Quaternion.identity);
+                    }
                     else
                     {
                         temp = Instantiate(groundPref, new Vector3(x, y, z), Quaternion.identity);
                     }
                     temp.transform.SetParent(chunk.transform);
                 }
+
 
             }
         }
